@@ -1,36 +1,44 @@
-name: Sync Fork
+name: Sync Upstream
 
 env:
-  REPO_TOKEN: ${{ secrets.REPOSITORY_TOKEN }}
-  REPO_OWNER: "ScottJWalter"
-  REPO_EMAIL: "sjwalter@gmail.com"
-  UPSTREAM_TOKEN: ${{ secrets.REPOSITORY_TOKEN }}
-  UPSTREAM_OWNER: "elder-plinius"
-  UPSTREAM_REPO: "CL4R1T4S"
+  # Required, URL to upstream (fork base)
+  UPSTREAM_URL: "https://github.com/elder-plinius/CL4R1T4S.git"
+  # Required, token to authenticate bot, could use ${{ secrets.GITHUB_TOKEN }} 
+  # Over here, we use a PAT instead to authenticate workflow file changes.
+  WORKFLOW_TOKEN: ${{ secrets.GITHUB_REPOSITORY_TOKEN }}
+  # Optional, defaults to main
+  UPSTREAM_BRANCH: "main"
+  # Optional, defaults to UPSTREAM_BRANCH
+  DOWNSTREAM_BRANCH: ""
+  # Optional fetch arguments
+  FETCH_ARGS: ""
+  # Optional merge arguments
+  MERGE_ARGS: ""
+  # Optional push arguments
+  PUSH_ARGS: ""
+  # Optional toggle to spawn time logs (keeps action active) 
+  SPAWN_LOGS: "true" # "true" or "false"
 
+# This runs every day on 1801 UTC
 on:
   schedule:
     - cron: '0 05 * * *' # This will run the action daily at midnight
+  # Allows manual workflow run (must in default branch to work)
   workflow_dispatch:
 
 jobs:
-  sync:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout 
-      uses: actions/checkout@v3
-      with:
-        token: ${{ env.REPO_TOKEN }}
+      - name: GitHub Sync to Upstream Repository
+        uses: dabreadman/sync-upstream-repo@v1.3.0
+        with: 
+          upstream_repo: ${{ env.UPSTREAM_URL }}
+          upstream_branch: ${{ env.UPSTREAM_BRANCH }}
+          downstream_branch: ${{ env.DOWNSTREAM_BRANCH }}
+          token: ${{ env.WORKFLOW_TOKEN }}
+          fetch_args: ${{ env.FETCH_ARGS }}
+          merge_args: ${{ env.MERGE_ARGS }}
+          push_args: ${{ env.PUSH_ARGS }}
+          spawn_logs: ${{ env.SPAWN_LOGS }}
 
-    - name: Configure Git
-      run: |
-        git config user.name ${{ env.REPO_OWNER }}
-        git config user.email ${{ env.REPO_EMAIL }}
-
-    - name: Sync with Upstream
-      run: |
-        git remote add upstream https://x-access-token:${{ env.UPSTREAM_TOKEN }}@github.com/${{ env.UPSTREAM_OWNER}}/${{ env.UPSTREAM_REPO }}.git
-        git fetch upstream
-        git merge upstream/main --allow-unrelated-histories # To deal with divergent histories
-        git push origin main
